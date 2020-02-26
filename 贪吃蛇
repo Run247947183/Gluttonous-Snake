@@ -1,0 +1,324 @@
+// 程序入口
+package Snake2;
+
+public class AppMain {
+    
+    public static void main(String[] args) {
+        // 创建出窗口的实例化对象
+        GameFrame gameFrame = new GameFrame();
+        // 将原本默认不可见的的窗口设置为可见
+        gameFrame.setVisible(true);
+    }
+}
+
+// 窗口类
+
+import javax.swing.*;
+
+public class GameFrame extends JFrame {
+    public GameFrame() {
+        // 设置窗口名字
+        super("贪吃蛇");
+        // 设置窗口的大小
+        this.setSize(500, 520);
+        // 设置串口居中显示
+        this.setLocationRelativeTo(null);
+        // 设置窗口关闭就退出游戏
+        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        // 实例化面板类
+        GamePanel gp = new GamePanel();
+        // 将面板加入窗口
+        this.add(gp);
+    }
+}
+
+
+// 面板类
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.util.Random;
+
+public class GamePanel extends JPanel {
+    // 要使用到蛇类和食物类的方法和变量，所以将他俩设置为成员变量
+    private GameSnake snake;
+    private GameFood food;
+
+    public GamePanel() {
+        // 实例化蛇类对象
+        snake = new GameSnake();
+        // 实例化食物对象
+        food = new GameFood();
+        // 进行线程的启动
+        new Move().start();
+        // 设置焦点，原本默认焦点在窗口上，现在将它设置到面板中来
+        this.setFocusable(true);
+        // 添加键盘监听事件
+        this.addKeyListener(new KeyAdapter()
+        {
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+                // 根据玩家的键盘按压对象，所作出的游戏回应
+                // 注意：这里暂且不支持180°的蛇转弯
+                switch (e.getKeyCode()) {
+                    // 37-40分别对应的是左、上、右、下
+                    case 37:
+                        if (snake.getSnakeFx() != 39) {
+                            snake.setSnakeFx(37);
+                        }
+                        break;
+                    case 38:
+                        if (snake.getSnakeFx() != 40) {
+                            snake.setSnakeFx(38);
+                        }
+                        break;
+                    case 39:
+                        if (snake.getSnakeFx() != 37) {
+                            snake.setSnakeFx(39);
+                        }
+                        break;
+                    case 40:
+                        if (snake.getSnakeFx() != 38) {
+                            snake.setSnakeFx(40);
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+        });
+    }
+
+    // 重写面板类的画图方法
+    @Override
+    public void paint(Graphics g) {
+        /**
+         * 下面方法执行后的效果为
+         * 背景是黑色的
+         * 蛇头是黄色的，蛇身体是粉色的
+         */
+        // 设置背景颜色为黑色
+        g.setColor(Color.black);
+        // 将背景画出
+        g.fillRect(0, 0, 500, 500);
+        // 设置颜色为红色
+        g.setColor(Color.red);
+        // 将食物在面板上画出
+        g.fillRect(food.getFoodx(), food.getFoody(), food.getSize(), food.getSize());
+        // 设置颜色为黄色
+        g.setColor(Color.yellow);
+        // 将蛇头在面板上画出
+        g.fillRect(snake.snakeX[0], snake.snakeY[0], snake.getSize(), snake.getSize());
+        // 设置颜色为粉色
+        g.setColor(Color.pink);
+        // 将蛇身体画出
+        for (int i = 1; i < snake.len; i++) {
+            g.fillRect(snake.snakeX[i], snake.snakeY[i], snake.getSize(), snake.getSize());
+        }
+    }
+
+
+    class Move extends Thread {
+        @Override
+        public void run() {
+            while (true) {
+                try {
+                    // 然线程睡眠0.3秒，用来控制蛇移动的速度
+                    Thread.sleep(300);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                // 首先移动蛇的身体
+                // 后节点的坐标移动的前一个节点的坐标位置
+                for (int i = snake.len; i > 0; i--) {
+                    snake.snakeX[i] = snake.snakeX[i - 1];
+                    snake.snakeY[i] = snake.snakeY[i - 1];
+                }
+
+                // 再移动蛇头
+                // 先获取到玩家键盘的方向键的Code值
+                switch (snake.getSnakeFx()) {
+                    case 37:
+                        // 往左走，蛇身体横坐标减20，因为每个节点大小为20
+                        snake.snakeX[0] -= 20;
+                        break;
+                    case 38:
+                        // 往上走，蛇身体纵坐标减20
+                        snake.snakeY[0] -= 20;
+                        break;
+                    case 39:
+                        // 往右走，蛇身体横坐标加20
+                        snake.snakeX[0] += 20;
+                        break;
+                    case 40:
+                        // 往下走，蛇身体纵坐标加20
+                        snake.snakeY[0] += 20;
+                        break;
+                }
+                // 吃到食物
+                if (snake.snakeX[0] == food.getFoodx() && snake.snakeY[0] == food.getFoody()) {
+                    snake.len++; // 蛇长度增加
+                    // 重新设置食物的坐标
+                    Random r = new Random();
+                    food.setFoodx(r.nextInt(24) * 20);
+                    food.setFoody(r.nextInt(24) * 20);
+                    // 递归判断是否和蛇身体碰撞
+                    food.Collision(snake.snakeX, snake.snakeX);
+                }
+                // 判断蛇是否触发死亡条件
+                if (snake.isDie()) {
+                    break;
+                }
+                // 重绘方法，如果没有这个方法则看不到图像的变化
+                repaint();
+            }
+        }
+    }
+}
+
+// 食物类
+
+import java.util.Random;
+
+public class GameFood {
+    private int size; // 食物的大小
+    private int foodx; // 食物的横坐标
+    private int foody; // 食物的纵坐标
+
+    private Random r; // 用来随机生成食物的坐标
+
+    // 因为要用到蛇类的变量和方法，所以让蛇类作为成员变量
+    private GameSnake snake;
+
+    public GameFood() {
+        // 实例化出蛇的对象
+        snake = new GameSnake();
+        //实例化出 Random 对象
+        r = new Random();
+        // 食物大小设置为 20
+        this.size = 20;
+        // 横坐标范围是（0，480），根据窗口的大小来合理化设置
+        foodx = r.nextInt(24) * 20;
+        // 纵坐标范围是（0，480）
+        foody = r.nextInt(24) * 20;
+        // 调用 Collison 方法来判断食物生成后，会不会和蛇身体发生碰撞
+        Collision(snake.snakeX, snake.snakeY);
+    }
+
+    // 判断食物是否和蛇的身体碰撞
+    public void Collision(int[] arr1, int[] arr2) {
+        for (int i = 0; i < arr1.length; i++) {
+            // 发生了碰撞
+            if (arr1[i] == getFoodx() && arr2[i] == getFoody()) {
+                // 重新设置食物坐标
+                foodx = r.nextInt(24) * 20;
+                foody = r.nextInt(24) * 20;
+                // 进行递归，再次判断是否发生碰撞
+                Collision(arr1, arr2);
+            }
+        }
+    }
+
+
+    /**
+     * 以下方法作用为：
+     * 设置食物横坐标
+     * 设置食物纵坐标
+     * 获取食物横坐标
+     * 获取食物纵坐标
+     * 获取食物大小
+     * @param foodx
+     */
+    public void setFoodx(int foodx) {
+        this.foodx = foodx;
+    }
+
+    public void setFoody(int foody) {
+        this.foody = foody;
+    }
+
+    public int getFoodx() {
+        return foodx;
+    }
+
+    public int getFoody() {
+        return foody;
+    }
+
+    public int getSize() {
+        return size;
+    }
+}
+
+// 蛇类
+package Snake2;
+
+import javax.swing.*;
+
+public class GameSnake {
+
+    // 蛇身体的横坐标数组
+    protected int[] snakeX;
+    // 蛇身体纵坐标数组
+    protected int[] snakeY;
+    private int size; // 蛇身体每一节的大小
+    protected int len; // 蛇的总长度
+    private int snakeFx; // 蛇移动方向
+
+    // 初始化这些属性
+    public GameSnake() {
+        snakeX = new int[100]; // 100的容量
+        snakeY = new int[100];
+        size = 20; // 蛇身体的每节大小为 20
+        // 初始化 0 下标的元素值就为蛇头的横纵下标
+        snakeX[0] = 100;
+        snakeY[0] = 100;
+        snakeX[1] = 80;
+        snakeY[1] = 100;
+        snakeX[2] = 60;
+        snakeY[2] = 100;
+        len = 3;
+        snakeFx = 39; // 30对应键盘右键的Code值，默认向右移动
+    }
+
+    // 判断蛇是否死亡
+    public boolean isDie() {
+        for (int i = 1; i < snakeX.length; i++) {
+            // 蛇头碰撞到身体了
+            if (snakeX[0] == snakeX[i] && snakeY[0] == snakeY[i]) {
+                // 弹出消息框
+                JOptionPane.showMessageDialog(null,"你吃到自己了！");
+                return true;
+            }
+            if (snakeX[0] < 0 || snakeX[0] > 460 || snakeY[0] < 0 || snakeY[0] > 460) {
+                // 弹出消息框
+                JOptionPane.showMessageDialog(null,"你碰到墙壁了！");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 以下方法作用为：
+     * 蛇移动方向的坐标设置方法
+     * 蛇移动方向坐标的获取方法
+     * 蛇身体每节长度的获取方法
+     * @param snakeFx
+     */
+    public void setSnakeFx(int snakeFx) {
+        this.snakeFx = snakeFx;
+    }
+
+    public int getSnakeFx() {
+        return snakeFx;
+    }
+
+    public int getSize() {
+        return size;
+    }
+}
+
